@@ -1,22 +1,31 @@
 package com.urlshortener.controller
 
 import com.urlshortener.service.Service
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
+data class CreateRequest(val url: String)
+
 @RestController
 class Controller(private val service: Service) {
 
     @PostMapping("/shorten")
-    fun shorten(@RequestBody url: String): String {
-        return service.shorten(url)
+    fun create(@RequestBody request: CreateRequest): String {
+        return service.create(request.url)
     }
 
     @GetMapping("/{code}")
     fun resolve(@PathVariable code: String): String {
         return service.resolve(code)
+    }
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleBadRequest(e: IllegalArgumentException): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Invalid request")))
     }
 }
