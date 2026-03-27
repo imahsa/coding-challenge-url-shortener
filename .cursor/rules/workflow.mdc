@@ -1,0 +1,13 @@
+---
+description: Agile workflow for the URL Shortener coding challenge
+alwaysApply: true
+---
+
+# Workflow Rules
+
+1. **Smallest unit of work.** Each step produces the smallest testable increment. Do ONE thing, not three.
+2. **Implementation first, then tests.** Write the function/class, make sure it builds. Then add tests to lock in the behaviour. Tests are a safety net for future refactoring and capture the bussiness requirements and aceptence criteria.
+3. **Stop after each step.** After writing code, stop. Let the user run the build, run the tests, review, commit, and push before moving on.
+4. **Update DECISIONS.md.** After each step, add a brief entry to `DECISIONS.md` explaining what was built and why.
+5. **Keep it simple.** No over-engineering. No unnecessary abstractions. No redundant naming (the package already says `urlshortener`).
+6. **No surprises.** Do not jump ahead to future steps. Do not add code the user hasn't asked for yet.
