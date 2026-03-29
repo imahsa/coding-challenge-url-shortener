@@ -17,21 +17,21 @@ class ServiceTest {
 
         @Test
         fun `create returns a 7-character alphanumeric code`() {
-            val code = service.create("https://example.com")
-            assertEquals(Service.CODE_LENGTH, code.length)
-            assertTrue(code.all { it.isLetterOrDigit() })
+            val result = service.create("https://example.com")
+            assertEquals(Service.CODE_LENGTH, result.code.length)
+            assertTrue(result.code.all { it.isLetterOrDigit() })
         }
 
         @Test
         fun `create accepts http URLs`() {
-            val code = service.create("http://example.com")
-            assertEquals(Service.CODE_LENGTH, code.length)
+            val result = service.create("http://example.com")
+            assertEquals(Service.CODE_LENGTH, result.code.length)
         }
 
         @Test
         fun `create accepts URLs with paths and query params`() {
-            val code = service.create("https://www.originenergy.com.au/electricity-gas/plans.html?foo=bar")
-            assertEquals(Service.CODE_LENGTH, code.length)
+            val result = service.create("https://www.originenergy.com.au/electricity-gas/plans.html?foo=bar")
+            assertEquals(Service.CODE_LENGTH, result.code.length)
         }
     }
 
@@ -44,20 +44,21 @@ class ServiceTest {
         fun `create returns the same code for the same URL (idempotent)`() {
             val first = service.create("https://example.com")
             val second = service.create("https://example.com")
-            assertEquals(first, second)
+            assertEquals(first.code, second.code)
         }
 
         @Test
         fun `create returns different codes for different URLs`() {
             val a = service.create("https://example.com/a")
             val b = service.create("https://example.com/b")
-            assertTrue(a != b)
+            assertTrue(a.code != b.code)
         }
 
         @Test
         fun `resolve returns the original URL for a stored code`() {
-            val code = service.create("https://example.com")
-            assertEquals("https://example.com", service.resolve(code))
+            val created = service.create("https://example.com")
+            val resolved = service.resolve(created.code)
+            assertEquals("https://example.com", resolved.originalUrl)
         }
 
         @Test
@@ -70,15 +71,15 @@ class ServiceTest {
 
         @Test
         fun `create trims whitespace before storing`() {
-            val code = service.create("  https://example.com  ")
-            assertEquals("https://example.com", service.resolve(code))
+            val created = service.create("  https://example.com  ")
+            assertEquals("https://example.com", created.originalUrl)
         }
 
         @Test
         fun `trimmed duplicate returns same code as original`() {
             val first = service.create("https://example.com")
             val second = service.create("  https://example.com  ")
-            assertEquals(first, second)
+            assertEquals(first.code, second.code)
         }
     }
 

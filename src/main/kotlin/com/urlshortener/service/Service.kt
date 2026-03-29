@@ -1,5 +1,6 @@
 package com.urlshortener.service
 
+import com.urlshortener.model.ShortenedUrl
 import java.net.URI
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
@@ -16,19 +17,22 @@ class Service {
         private const val MAX_COLLISION_RETRIES = 10
     }
 
-    fun create(url: String): String {
+    fun create(url: String): ShortenedUrl {
         val normalised = validate(url)
 
-        return urlToCode.computeIfAbsent(normalised) { 
-            val code = generateUniqueCode()
-            codeToUrl[code] = normalised
-            code
+        val code = urlToCode.computeIfAbsent(normalised) {
+            val newCode = generateUniqueCode()
+            codeToUrl[newCode] = normalised
+            newCode
         }
+
+        return ShortenedUrl(code = code, originalUrl = normalised)
     }
 
-    fun resolve(code: String): String {
-        return codeToUrl[code]
+    fun resolve(code: String): ShortenedUrl {
+        val url = codeToUrl[code]
             ?: throw NoSuchElementException("Short code not found: $code")
+        return ShortenedUrl(code = code, originalUrl = url)
     }
 
     private fun validate(url: String): String {

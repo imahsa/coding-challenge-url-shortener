@@ -24,20 +24,20 @@ class Controller(private val service: Service) {
         @RequestBody request: CreateRequest,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<CreateResponse> {
-        val code = service.create(request.url)
+        val shortened = service.create(request.url)
         val baseUrl = buildBaseUrl(httpRequest)
         val response = CreateResponse(
-            shortUrl = "$baseUrl/$code",
-            originalUrl = service.resolve(code),
+            shortUrl = "$baseUrl/${shortened.code}",
+            originalUrl = shortened.originalUrl,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
     @GetMapping("/{code}")
     fun resolve(@PathVariable code: String): ResponseEntity<Void> {
-        val url = service.resolve(code)
+        val shortened = service.resolve(code)
         return ResponseEntity.status(HttpStatus.FOUND)
-            .location(URI(url))
+            .location(URI(shortened.originalUrl))
             .build()
     }
 

@@ -1,6 +1,7 @@
 package com.urlshortener.controller
 
 import com.ninjasquad.springmockk.MockkBean
+import com.urlshortener.model.ShortenedUrl
 import com.urlshortener.service.Service
 import io.mockk.every
 import org.junit.jupiter.api.Nested
@@ -28,8 +29,7 @@ class ControllerTest {
 
         @Test
         fun `returns 201 with shortUrl and originalUrl`() {
-            every { service.create("https://example.com") } returns "abc1234"
-            every { service.resolve("abc1234") } returns "https://example.com"
+            every { service.create("https://example.com") } returns ShortenedUrl("abc1234", "https://example.com")
 
             mvc.post("/shorten") {
                 contentType = MediaType.APPLICATION_JSON
@@ -88,7 +88,7 @@ class ControllerTest {
 
         @Test
         fun `returns 302 redirect with Location header`() {
-            every { service.resolve("abc1234") } returns "https://example.com"
+            every { service.resolve("abc1234") } returns ShortenedUrl("abc1234", "https://example.com")
 
             mvc.get("/abc1234").andExpect {
                 status { isFound() }
