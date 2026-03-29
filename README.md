@@ -79,7 +79,7 @@ curl -v http://localhost:8080/abc1234
 
 ## Design Decisions
 
-See [DECISIONS.md](../DECISIONS.md) for the full log. Highlights:
+See [DECISIONS.md](./DECISIONS.md) for the full log. Highlights:
 
 - **Kotlin over Java** — `data class` for immutability, null safety in the type system, concise syntax
 - **ConcurrentHashMap** — thread-safe, O(1) bidirectional lookup via two maps (`code→url` and `url→code`)
