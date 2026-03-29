@@ -25,6 +25,23 @@
 
 > Server starts at **http://localhost:8080**
 
+### Docker (no local JDK required)
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) with Compose v2
+
+```bash
+docker compose up --build
+```
+
+The API is available at **http://localhost:8080** (same `curl` examples below). To run in the background: `docker compose up -d --build`. Stop: `docker compose down`.
+
+To build and run the image without Compose:
+
+```bash
+docker build -t url-shortener .
+docker run --rm -p 8080:8080 url-shortener
+```
+
 ---
 
 ## API Endpoints
@@ -142,6 +159,9 @@ Key insight: **Bean validation runs before the controller method.** URL-specific
 
 ```
 url-shortener/
+├── Dockerfile                                 # Multi-stage build (JDK → JRE)
+├── docker-compose.yml                         # One-command local run
+├── .dockerignore                              # Smaller build context
 ├── build.gradle.kts                           # Gradle build config (Kotlin DSL)
 ├── DECISIONS.md                               # Full design decision log
 ├── src/
