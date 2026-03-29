@@ -14,6 +14,7 @@ class UrlShortenerService(private val store: UrlStore) {
     companion object {
         const val CODE_LENGTH = 7
         private const val MAX_COLLISION_RETRIES = 10
+        private val ALPHANUMERIC_CHARS = ('0'..'z').filter { it.isLetterOrDigit() }
     }
 
     fun create(url: String): ShortenedUrl {
@@ -60,7 +61,6 @@ class UrlShortenerService(private val store: UrlStore) {
     }
 
     private fun generateCode(): String {
-        val chars = ('0'..'z').filter { it.isLetterOrDigit() }
-        return (1..CODE_LENGTH).map { chars[random.nextInt(chars.size)] }.joinToString("")
+        return (1..CODE_LENGTH).map { ALPHANUMERIC_CHARS[random.nextInt(ALPHANUMERIC_CHARS.size)] }.joinToString("")
     }
 }
