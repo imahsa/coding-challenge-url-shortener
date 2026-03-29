@@ -1,16 +1,14 @@
 package com.urlshortener.service
 
 import com.urlshortener.model.ShortenedUrl
+import com.urlshortener.store.UrlStore
 import java.net.URI
 import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
 
 @org.springframework.stereotype.Service
-class Service {
+class Service(private val store: UrlStore) {
 
     private val random = SecureRandom()
-    private val codeToUrl = ConcurrentHashMap<String, String>()
-    private val urlToCode = ConcurrentHashMap<String, String>()
 
     companion object {
         const val CODE_LENGTH = 7
@@ -20,17 +18,18 @@ class Service {
     fun create(url: String): ShortenedUrl {
         val normalised = validate(url)
 
-        val code = urlToCode.computeIfAbsent(normalised) {
-            val newCode = generateUniqueCode()
-            codeToUrl[newCode] = normalised
-            newCode
+        store.findByUrl(normalised)?.let {
+            return ShortenedUrl(code = it, originalUrl = normalised)
         }
+
+        val code = generateUniqueCode()
+        store.save(code, normalised)
 
         return ShortenedUrl(code = code, originalUrl = normalised)
     }
 
     fun resolve(code: String): ShortenedUrl {
-        val url = codeToUrl[code]
+        val url = store.findByCode(code)
             ?: throw NoSuchElementException("Short code not found: $code")
         return ShortenedUrl(code = code, originalUrl = url)
     }
@@ -54,7 +53,7 @@ class Service {
     private fun generateUniqueCode(): String {
         repeat(MAX_COLLISION_RETRIES) {
             val code = generateCode()
-            if (!codeToUrl.containsKey(code)) return code
+            if (store.findByCode(code) == null) return code
         }
         throw IllegalStateException("Failed to generate a unique code after $MAX_COLLISION_RETRIES attempts")
     }

@@ -1,5 +1,6 @@
 package com.urlshortener.service
 
+import com.urlshortener.store.InMemoryUrlStore
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -8,7 +9,7 @@ import kotlin.test.assertTrue
 
 class ServiceTest {
 
-    private val service = Service()
+    private val service = Service(InMemoryUrlStore())
 
     // ── Code generation ──────────────────────────────────────────
 
