@@ -55,12 +55,21 @@ class ControllerTest {
         }
 
         @Test
-        fun `returns 400 for blank URL`() {
-            every { service.create("") } throws IllegalArgumentException("URL must not be blank")
-
+        fun `returns 400 for blank URL via bean validation`() {
             mvc.post("/shorten") {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"url": ""}"""
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.error") { value("URL must not be blank") }
+            }
+        }
+
+        @Test
+        fun `returns 400 for whitespace-only URL via bean validation`() {
+            mvc.post("/shorten") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"url": "   "}"""
             }.andExpect {
                 status { isBadRequest() }
                 jsonPath("$.error") { value("URL must not be blank") }

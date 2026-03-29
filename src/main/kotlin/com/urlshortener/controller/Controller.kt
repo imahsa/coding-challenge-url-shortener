@@ -2,8 +2,11 @@ package com.urlshortener.controller
 
 import com.urlshortener.service.Service
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
+import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -12,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
-data class CreateRequest(val url: String)
+data class CreateRequest(@field:NotBlank(message = "URL must not be blank") val url: String)
 data class CreateResponse(val shortUrl: String, val originalUrl: String)
 data class ErrorResponse(val error: String)
 
@@ -21,7 +24,7 @@ class Controller(private val service: Service) {
 
     @PostMapping("/shorten")
     fun create(
-        @RequestBody request: CreateRequest,
+        @Valid @RequestBody request: CreateRequest,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<CreateResponse> {
         val shortened = service.create(request.url)
@@ -47,6 +50,12 @@ class Controller(private val service: Service) {
         val defaultPort = if (scheme == "https") 443 else 80
         val portSuffix = if (port == defaultPort || port <= 0) "" else ":$port"
         return "$scheme://${req.serverName}$portSuffix"
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidation(e: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+        val message = e.bindingResult.fieldErrors.joinToString("; ") { it.defaultMessage ?: "Invalid value" }
+        return ResponseEntity.badRequest().body(ErrorResponse(message))
     }
 
     @ExceptionHandler(IllegalArgumentException::class)
