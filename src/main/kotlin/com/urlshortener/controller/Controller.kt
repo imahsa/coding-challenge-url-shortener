@@ -1,6 +1,6 @@
 package com.urlshortener.controller
 
-import com.urlshortener.service.Service
+import com.urlshortener.service.UrlShortenerService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
@@ -20,7 +20,7 @@ data class CreateResponse(val shortUrl: String, val originalUrl: String)
 data class ErrorResponse(val error: String)
 
 @RestController
-class Controller(private val service: Service) {
+class Controller(private val service: UrlShortenerService) {
 
     @PostMapping("/shorten")
     fun create(

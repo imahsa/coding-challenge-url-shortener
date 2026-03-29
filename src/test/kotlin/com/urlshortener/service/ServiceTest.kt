@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class ServiceTest {
 
-    private val service = Service(InMemoryUrlStore())
+    private val service = UrlShortenerService(InMemoryUrlStore())
 
     // ── Code generation ──────────────────────────────────────────
 
@@ -19,20 +19,20 @@ class ServiceTest {
         @Test
         fun `create returns a 7-character alphanumeric code`() {
             val result = service.create("https://example.com")
-            assertEquals(Service.CODE_LENGTH, result.code.length)
+            assertEquals(UrlShortenerService.CODE_LENGTH, result.code.length)
             assertTrue(result.code.all { it.isLetterOrDigit() })
         }
 
         @Test
         fun `create accepts http URLs`() {
             val result = service.create("http://example.com")
-            assertEquals(Service.CODE_LENGTH, result.code.length)
+            assertEquals(UrlShortenerService.CODE_LENGTH, result.code.length)
         }
 
         @Test
         fun `create accepts URLs with paths and query params`() {
             val result = service.create("https://www.originenergy.com.au/electricity-gas/plans.html?foo=bar")
-            assertEquals(Service.CODE_LENGTH, result.code.length)
+            assertEquals(UrlShortenerService.CODE_LENGTH, result.code.length)
         }
     }
 

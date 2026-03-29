@@ -2,7 +2,7 @@ package com.urlshortener.controller
 
 import com.ninjasquad.springmockk.MockkBean
 import com.urlshortener.model.ShortenedUrl
-import com.urlshortener.service.Service
+import com.urlshortener.service.UrlShortenerService
 import io.mockk.every
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -20,7 +20,7 @@ class ControllerTest {
     private lateinit var mvc: MockMvc
 
     @MockkBean
-    private lateinit var service: Service
+    private lateinit var service: UrlShortenerService
 
     // ── POST /shorten ────────────────────────────────────────────
 

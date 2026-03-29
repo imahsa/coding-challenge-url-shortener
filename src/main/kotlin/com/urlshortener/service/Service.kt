@@ -2,11 +2,12 @@ package com.urlshortener.service
 
 import com.urlshortener.model.ShortenedUrl
 import com.urlshortener.store.UrlStore
+import org.springframework.stereotype.Service
 import java.net.URI
 import java.security.SecureRandom
 
-@org.springframework.stereotype.Service
-class Service(private val store: UrlStore) {
+@Service
+class UrlShortenerService(private val store: UrlStore) {
 
     private val random = SecureRandom()
 
