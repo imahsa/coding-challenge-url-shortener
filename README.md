@@ -9,8 +9,9 @@
 | Framework | [Spring Boot](https://spring.io/projects/spring-boot) 3.5.0 |
 | Language | Kotlin (JDK 21) |
 | Build | Gradle (Kotlin DSL) |
-| Storage | In-memory (`ConcurrentHashMap`) |
-| Testing | JUnit 5, MockK, SpringMockK, MockMvc |
+| Storage | In-memory (`ConcurrentHashMap`) via `UrlStore` interface |
+| Validation | Bean Validation (`@Valid`, `@NotBlank`) + service-level URL checks |
+| Testing | JUnit 5, MockK, SpringMockK, MockMvc — 23 tests |
 
 ---
 
@@ -22,7 +23,7 @@
 ./gradlew bootRun
 ```
 
-Server starts at **http://localhost:8080**
+> Server starts at **http://localhost:8080**
 
 ---
 
@@ -69,26 +70,53 @@ curl -v http://localhost:8080/abc1234
 
 | Rule | Behavior |
 |---|---|
-| Non-blank | Empty or whitespace-only URLs rejected (400) |
+| Non-blank | Empty or whitespace-only URLs rejected at framework level via `@NotBlank` (400) |
 | Valid format | Must be parseable as a URI |
 | HTTP/HTTPS only | `ftp://`, `mailto:`, etc. rejected (400) |
 | Valid host | URL must contain a non-blank hostname |
 | Whitespace trimmed | Leading/trailing whitespace stripped before storage |
+| Idempotent | Same URL always returns the same short code |
 
 ---
 
-## Design Decisions
+## Request Lifecycle
 
-See [DECISIONS.md](./DECISIONS.md) for the full log. Highlights:
+What happens when `POST /shorten` hits the server:
 
-- **Kotlin over Java** — `data class` for immutability, null safety in the type system, concise syntax
-- **ConcurrentHashMap** — thread-safe, O(1) bidirectional lookup via two maps (`code→url` and `url→code`)
-- **Idempotent create** — same URL always returns the same short code (no duplicates)
-- **SecureRandom** — cryptographically strong random code generation, 7-char alphanumeric (62^7 ≈ 3.5 trillion combinations)
-- **Collision retry** — up to 10 attempts if a generated code already exists
-- **302 redirect** — standard temporary redirect; 301 would be cached by browsers and harder to change later
-- **Controller-level exception handlers** — `IllegalArgumentException` → 400, `NoSuchElementException` → 404
-- **MockMvc + MockK** — controller tests mock the service layer, service tests run standalone
+```
+HTTP Request
+  │
+  ▼
+Tomcat ──── parses method, URL, headers, JSON body
+  │
+  ▼
+DispatcherServlet ──── matches route to Controller.create()
+  │
+  ▼
+Jackson ──── deserializes JSON into CreateRequest data class
+  │
+  ▼
+Bean Validation ──── @Valid triggers @NotBlank check on url field
+  │                  ✗ 400 Bad Request (MethodArgumentNotValidException)
+  ▼
+Controller ──── delegates to UrlShortenerService (intentionally thin)
+  │
+  ▼
+Service ──── domain logic:
+  │            1. validate URL (scheme, host, format)
+  │            2. check store for existing entry (idempotency)
+  │            3. generate unique 7-char code via SecureRandom
+  │            4. save to UrlStore → return ShortenedUrl
+  ▼
+Controller ──── builds shortUrl from request context, returns 201 Created
+  │
+  ▼
+@ExceptionHandler ──── catches domain exceptions:
+                       IllegalArgumentException → 400
+                       NoSuchElementException → 404
+```
+
+Key insight: **Bean validation runs before the controller method.** URL-specific validation (scheme, host) happens in the service because it's domain logic, not input format.
 
 ---
 
@@ -104,9 +132,9 @@ See [DECISIONS.md](./DECISIONS.md) for the full log. Highlights:
 | `ServiceTest` — CodeGeneration | 3 | Code format, http/https, paths + query params |
 | `ServiceTest` — Store | 6 | Idempotent create, different URLs → different codes, resolve, 404, trim, trim dedup |
 | `ServiceTest` — Validation | 6 | Blank, whitespace, malformed, ftp, mailto, no host |
-| `ControllerTest` — Shorten | 4 | 201 + JSON body, 400 invalid, 400 blank, 400 non-http |
+| `ControllerTest` — Shorten | 5 | 201 + JSON body, 400 invalid, 400 blank (bean validation), 400 whitespace (bean validation), 400 non-http |
 | `ControllerTest` — Resolve | 2 | 302 redirect + Location header, 404 unknown |
-| **Total** | **22** | |
+| **Total** | **23** | |
 
 ---
 
@@ -114,23 +142,46 @@ See [DECISIONS.md](./DECISIONS.md) for the full log. Highlights:
 
 ```
 url-shortener/
-├── build.gradle.kts
+├── build.gradle.kts                           # Gradle build config (Kotlin DSL)
+├── DECISIONS.md                               # Full design decision log
 ├── src/
 │   ├── main/kotlin/com/urlshortener/
-│   │   ├── Application.kt               # Spring Boot entry point
-│   │   ├── controller/
-│   │   │   └── Controller.kt            # REST endpoints + exception handlers
-│   │   └── service/
-│   │       └── Service.kt               # URL validation, code generation, in-memory store
+│   │   ├── Application.kt                    # Spring Boot entry point
+│   │   ├── model/
+│   │   │   └── ShortenedUrl.kt               # Domain model (code + originalUrl)
+│   │   ├── store/
+│   │   │   ├── UrlStore.kt                   # Storage interface (extensible)
+│   │   │   └── InMemoryUrlStore.kt           # ConcurrentHashMap implementation
+│   │   ├── service/
+│   │   │   └── UrlShortenerService.kt        # Validation, code generation, business logic
+│   │   └── controller/
+│   │       ├── Controller.kt                 # REST endpoints + exception handlers
+│   │       └── Dtos.kt                       # Request/response data classes
 │   ├── main/resources/
 │   │   └── application.properties
 │   └── test/kotlin/com/urlshortener/
-│       ├── ApplicationTests.kt           # Context load smoke test
+│       ├── ApplicationTests.kt                # Context load smoke test
 │       ├── controller/
-│       │   └── ControllerTest.kt         # MockMvc integration tests
+│       │   └── ControllerTest.kt              # MockMvc integration tests
 │       └── service/
-│           └── ServiceTest.kt            # Unit tests (validation, store, code gen)
+│           └── ServiceTest.kt                 # Unit tests (validation, store, code gen)
 ```
+
+---
+
+## Design Decisions
+
+See [DECISIONS.md](./DECISIONS.md) for the full log. Highlights:
+
+- **Kotlin over Java** — `data class` for immutability, null safety in the type system, concise syntax
+- **`ShortenedUrl` domain model** — service returns a typed value object, not raw strings
+- **`UrlStore` interface** — decouples storage from business logic; swap to Redis/DB by implementing the interface
+- **`ConcurrentHashMap`** — thread-safe, O(1) bidirectional lookup via two maps (`code→url` and `url→code`)
+- **`computeIfAbsent`** — atomic idempotent create, eliminates TOCTOU race condition
+- **Bean validation (`@Valid` + `@NotBlank`)** — framework-level blank check before controller executes
+- **SecureRandom** — cryptographically strong random code generation, 7-char alphanumeric (62^7 ≈ 3.5 trillion combinations)
+- **302 redirect** — temporary redirect; 301 would be cached by browsers and harder to change later
+- **Controller-level exception handlers** — `IllegalArgumentException` → 400, `NoSuchElementException` → 404, `MethodArgumentNotValidException` → 400
 
 ---
 

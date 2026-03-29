@@ -171,3 +171,51 @@ Service tests run standalone (no Spring context) for fast feedback. This separat
 The `shortUrl` in the response is built from the incoming request's scheme, host, and port. Default ports (80 for HTTP, 443 for HTTPS) are omitted to produce clean URLs like `http://localhost/abc1234` rather than `http://localhost:80/abc1234`.
 
 This makes the API environment-agnostic — it works correctly behind a reverse proxy or load balancer without hardcoding a domain.
+
+---
+
+## Decision: `computeIfAbsent` for Thread-Safe Idempotency
+
+The original `create()` implementation had a check-then-act race condition: `urlToCode[url]?.let { return it }` followed by `codeToUrl[code] = url`. Two concurrent requests for the same URL could both pass the existence check and store different codes.
+
+The fix uses `ConcurrentHashMap.computeIfAbsent()`, which is atomic for a given key — only one thread computes the mapping function, and all others wait and receive the same result. This eliminates the race without explicit locking.
+
+---
+
+## Decision: `ShortenedUrl` Domain Model
+
+The service originally returned raw `String` values (code from `create()`, URL from `resolve()`). This was replaced with a `ShortenedUrl` data class that pairs `code` and `originalUrl` together.
+
+**Why?** The challenge criteria explicitly calls for "Domain Modelling." A typed value object makes the contract between service and controller explicit, enables IDE auto-completion, and prevents accidental misuse (e.g. passing a code where a URL was expected). Kotlin's `data class` gives us `equals`, `hashCode`, `toString`, and `copy` for free.
+
+---
+
+## Decision: `UrlStore` Interface
+
+Storage was originally embedded directly in the service via two `ConcurrentHashMap` fields. This was extracted into a `UrlStore` interface with three methods: `findByCode`, `findByUrl`, `save`.
+
+**Why?** The challenge criteria says "Write your code so it can easily accommodate future changes." With this interface, swapping from in-memory to Redis or Postgres requires implementing `UrlStore` — zero changes to the service or controller. The current `InMemoryUrlStore` is annotated with `@Component` and injected via Spring's constructor injection.
+
+---
+
+## Decision: Bean Validation (`@Valid` + `@NotBlank`)
+
+The `spring-boot-starter-validation` dependency was declared from the start but unused. We added `@field:NotBlank` to `CreateRequest.url` and `@Valid` on the controller parameter.
+
+**Why?** This catches blank/whitespace URLs at the framework level (before the controller method executes) and returns a structured 400 response via `MethodArgumentNotValidException`. The service still validates URL format (scheme, host) as defense-in-depth — but the blank check is now declarative.
+
+---
+
+## Decision: Rename `Service` to `UrlShortenerService`
+
+The original class was named `Service`, which collided with `org.springframework.stereotype.Service`, forcing a fully qualified annotation: `@org.springframework.stereotype.Service`. Renaming to `UrlShortenerService` allows a standard import and eliminates the code smell.
+
+**Trade-off:** The package `com.urlshortener.service` already provides context, so the class name has some redundancy. However, readability in stack traces, IDE search, and code review outweighs the minor duplication.
+
+---
+
+## Decision: Separate DTOs File
+
+`CreateRequest`, `CreateResponse`, and `ErrorResponse` were originally defined at the top of `Controller.kt`. They were moved to a separate `Dtos.kt` file in the same package.
+
+**Why?** Separation of concerns — the controller file now contains only routing and HTTP logic. The DTOs can be imported independently by tests or other components without pulling in the controller.
