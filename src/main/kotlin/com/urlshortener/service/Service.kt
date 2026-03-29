@@ -19,12 +19,11 @@ class Service {
     fun create(url: String): String {
         val normalised = validate(url)
 
-        urlToCode[normalised]?.let { return it }
-
-        val code = generateUniqueCode()
-        codeToUrl[code] = normalised
-        urlToCode[normalised] = code
-        return code
+        return urlToCode.computeIfAbsent(normalised) { 
+            val code = generateUniqueCode()
+            codeToUrl[code] = normalised
+            code
+        }
     }
 
     fun resolve(code: String): String {
