@@ -3,7 +3,6 @@ package com.urlshortener.controller
 import com.urlshortener.service.UrlShortenerService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -14,10 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
-
-data class CreateRequest(@field:NotBlank(message = "URL must not be blank") val url: String)
-data class CreateResponse(val shortUrl: String, val originalUrl: String)
-data class ErrorResponse(val error: String)
 
 @RestController
 class Controller(private val service: UrlShortenerService) {
